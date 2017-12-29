@@ -168,3 +168,6 @@ instance: Geth/v1.7.3-stable/darwin-amd64/go1.9.2
       * Show Contract JSON Interface (allows execution of the contract)
       * "Call" Functions are under heading "READ FROM CONTRACT"
       * "Transaction" Functions are under heading "WRITE TO CONTRACT" (i.e. `transfer`, `transferFrom`, `approve`)
+
+* References:
+  * Udemy Ethereum Masterclass - https://www.udemy.com/ethereum-masterclass
