@@ -239,5 +239,24 @@ python -m pip install ethereum==2.1.5
 python scripts/main.py
 ```
 
+* Experimental code snippets. 
+  
+  * Install dependencies included for each file first 
+
+```
+npm install ethers
+npm install ethjs-query
+npm install ethjs-account
+npm install ethereumjs-tx
+npm install ethjs-provider-signer
+```
+  
+  * Run each experiment
+  
+```
+node scripts/experiments/ethers-lib.js;
+node scripts/experiments/ethjs-lib.js
+```
+
 * References:
   * Udemy Ethereum Masterclass - https://www.udemy.com/ethereum-masterclass
