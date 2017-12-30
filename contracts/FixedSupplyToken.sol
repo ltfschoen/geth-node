@@ -34,6 +34,9 @@ contract ERC20Interface {
 
     // Triggered whenever approve(address _spender, uint256 _value) is called.
     event Approval(address indexed _owner, address indexed _spender, uint256 _value);
+
+    // Reliably obtain the contract address of deployed contract using Web3
+    event Created(bytes32 indexed identifier);
 }
 
 
@@ -61,9 +64,10 @@ contract FixedSupplyToken is ERC20Interface {
     }
 
     // Constructor
-    function FixedSupplyToken() public {
+    function FixedSupplyToken(bytes32 identifier) public {
         owner = msg.sender;
         balances[owner] = _totalSupply;
+        Created(identifier);
     }
 
     function totalSupply() public constant returns (uint256) {

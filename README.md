@@ -45,7 +45,7 @@
 geth --datadir=./chaindata/ init ./genesis.json
 ```
 
-* Terminal Tab #1 - Start Geth Node using ./chaindata/ folder. It starts the network with same Chain ID as defined in the genesis.json file. Geth listens for incoming connections on port 30303 using an IPC file geth.ipc that is created when it is running to allow processes to connect to Geth (i.e. with `geth attach`, MIST / Ethereum Wallet). With the Private Network it has no other Nodes and nothing to synchronise.
+* Terminal Tab #1 - Start Geth Node using ./chaindata/ folder. It starts the network with same Chain ID as defined in the genesis.json file. Geth listens for incoming connections on port 30303 using an IPC file geth.ipc that is created when it is running to allow processes to connect to Geth (i.e. with `geth attach`, MIST / Ethereum Wallet). With the Private Network it has no other Nodes and nothing to synchronise. Note: Verbosity of 3 is recommended.
 ```
 geth --datadir=./chaindata/ --verbosity 5
 ```
@@ -133,6 +133,9 @@ instance: Geth/v1.7.3-stable/darwin-amd64/go1.9.2
 ```
 > miner.start(1); 
 ```
+  
+* Optional Alternative: Try downloading EthMiner, which also supports GPU mining with `ethminer -G`. 
+  * Reference: https://github.com/ethereum-mining/ethminer/releases
 
 * Wait about 5 minutes for the DAG to generate before CPU mining starts, since it must first generate the DAG (see `Generating DAG in progress` in Geth logs with a percentage complete shown i.e. `epoch=1 percentage=42`). Reference: https://github.com/ethereum/wiki/wiki/Mining
 
@@ -168,6 +171,52 @@ instance: Geth/v1.7.3-stable/darwin-amd64/go1.9.2
       * Show Contract JSON Interface (allows execution of the contract)
       * "Call" Functions are under heading "READ FROM CONTRACT"
       * "Transaction" Functions are under heading "WRITE TO CONTRACT" (i.e. `transfer`, `transferFrom`, `approve`)
+      * Copy the Transaction Hash
+
+* Terminal Tab #2 - JavaScript RPC Geth Console
+  * Reference: https://github.com/ethereum/wiki/wiki/JavaScript-API
+
+  * Show Transaction
+```
+var tx = web3.eth.getTransaction('<INSERT_TRANSACTION_HASH_OF_DEPLOYED_CONTRACT>');
+```
+
+  * Estimate Gas
+```
+web3.eth.estimateGas(tx);
+```
+
+  * Transaction Receipt
+```
+web3.eth.getTransactionReceipt('<INSERT_TRANSACTION_HASH_OF_DEPLOYED_CONTRACT>', function(err, res) { console.log(JSON.stringify(res, null, 2)) });
+```
+
+* Terminal Tab #2 - JavaScript Node.js script using Web3.js
+  * Reference: 
+    * Web3.js API 0.2x.x Docs - https://github.com/ethereum/wiki/wiki/JavaScript-API
+    * Web3.js API 1.0.0-beta.xx Docs - https://web3js.readthedocs.io/en/1.0/web3.html
+    * Web3.js Forums - https://forum.ethereum.org/categories/ethereum-js
+
+  * Install Node.js dependencies
+
+```
+rm -rf node_modules
+
+npm install --save-dev \
+  web3@1.0.0-beta.27 \
+  net@1.0.2 \
+  solc@0.4.19 \
+  fs@0.0.1-security
+
+npm install
+```
+
+  * Deploy New Contract using Web3.js instead of via MIST
+
+```
+node scripts/main.js
+```
+  * IMPORTANT NOTE: Errors with `authentication needed: password or unlock` since Web3.js 1.0.0-beta has not finished implementing Unlock - http://web3js.readthedocs.io/en/1.0/web3-eth-personal.html?highlight=unlock
 
 * References:
   * Udemy Ethereum Masterclass - https://www.udemy.com/ethereum-masterclass

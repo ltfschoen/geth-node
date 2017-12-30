@@ -1,0 +1,26 @@
+{
+  "name": "geth-node",
+  "version": "0.1.0",
+  "description": "* Setup Geth Node (independent of MIST or Parity) as an Ethereum client using Ethereum Protocol that allows for interaction with the Private Network blockchain.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ltfschoen/geth-node.git"
+  },
+  "author": "Luke Schoen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ltfschoen/geth-node/issues"
+  },
+  "homepage": "https://github.com/ltfschoen/geth-node#readme",
+  "devDependencies": {
+    "fs": "0.0.1-security",
+    "net": "^1.0.2",
+    "solc": "^0.4.19",
+    "web3": "1.0.0-beta.27"
+  },
+  "dependencies": {}
+}

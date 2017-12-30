@@ -1,3 +1,5 @@
 chaindata/
 geth.log
 jsre.log
+
+node_modules/
