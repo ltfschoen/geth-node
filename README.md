@@ -219,6 +219,27 @@ node scripts/main.js
 
   * IMPORTANT NOTE: Errors with `authentication needed: password or unlock` since Web3.js 1.0.0-beta has not finished implementing Unlock - http://web3js.readthedocs.io/en/1.0/web3-eth-personal.html?highlight=unlock
 
+    * Attempt to fix errors:
+
+```
+// https://github.com/ethjs/ethjs-query
+// https://github.com/ethjs/ethjs-account
+// https://github.com/ethereumjs/ethereumjs-tx
+// https://github.com/ethjs/ethjs-provider-signer
+
+// Usage:
+// ethjs-account - for generation
+// ethereumjs-tx - for signing
+// ethjs-provider-signer - provider to intercept and sign transactions
+// ethjs-signer - DO NOT USE as it does not have replay protection EIP 155
+
+npm install --save-dev ethers
+npm install --save-dev ethjs-query
+npm install --save-dev ethjs-account
+npm install --save-dev ethereumjs-tx
+npm install --save-dev ethjs-provider-signer
+```
+
   * Deplot New Contract using Web3.py instead of MIST
 
     * References:

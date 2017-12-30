@@ -3,10 +3,11 @@ const Web3 = require('web3');
 const net = require('net');
 const solc = require('solc');
 const fs = require('fs');
-// https://github.com/ethers-io/ethers.js/
-// https://github.com/ethers-io/ethers.js/blob/master/examples/wallet/index.html
-// npm install --save-dev ethers
 const ethers = require('ethers');
+
+const EthjsAccount = require('ethjs-account');
+const EthjsProviderSigner = require('ethjs-provider-signer');
+const EthjsQuery = require('ethjs-query');
 
 /**
  * Deploy Solidity contract to Private Network using Web3.js API 1.0.0-beta.xx
@@ -15,6 +16,19 @@ const ethers = require('ethers');
 
 const GETH_IPC_PATH = '/Users/Ls/code/blockchain/geth-node/chaindata/geth.ipc';
 const GENERIC_PASSWORD_TO_ENCRYPT = 'test123456';
+
+const ethjsAccount = EthjsAccount.generate('892h@fs8sk^2h8s8shfs.jk39hsoi@hohsko');
+const ethjsAccountAddress = EthjsAccount.getAddress(ethjsAccount.privateKey);
+console.log(`ethjsAccount: `, ethjsAccount);
+console.log(`ethjsAccountAddress: `, ethjsAccountAddress);
+
+const ethjsSignerProvider = new EthjsProviderSigner(GETH_IPC_PATH, {
+  signTransaction: (rawTx, cb) => cb(null, EthjsSigner.sign(rawTx, ethjsAccount.privateKey)),
+  accounts: (cb) => cb(null, [ethjsAccountAddress]),
+});
+const ethjsQueryProvider = new EthjsQuery(ethjsSignerProvider);
+console.log(`ethjsSignerProvider: `, ethjsSignerProvider);
+console.log(`ethjsQueryProvider: `, ethjsQueryProvider);
 
 let web3 = new Web3();
 web3.setProvider(GETH_IPC_PATH, net);
@@ -77,15 +91,16 @@ Promise
     console.log(`Promise.all resolved with: `, res);
 
 
-    // TEMPORARY FIX ATTEMPT: Due to error `authentication needed: password or unlock` when using 
-    // web3.eth.personal to generate a senderAddress, we will use the NPM 'ethers'
-    // package instead until Web3.js 1.0.0 Beta-27 adds `unlockAccount` function
-    let PRIVATE_KEY = '0x3141592653589793238462643383279502884197169399375105820974944592';
-    let wallet = new ethers.Wallet(PRIVATE_KEY);
-    console.log(`Wallet is: `, wallet);
-    // let senderAddress = wallet.address;
-    let senderAddress = wallet.privateKey;
+    // // TEMPORARY FIX ATTEMPT: Due to error `authentication needed: password or unlock` when using 
+    // // web3.eth.personal to generate a senderAddress, we will use the NPM 'ethers'
+    // // package instead until Web3.js 1.0.0 Beta-27 adds `unlockAccount` function
+    // let PRIVATE_KEY = '0x3141592653589793238462643383279502884197169399375105820974944592';
+    // let wallet = new ethers.Wallet(PRIVATE_KEY);
+    // console.log(`Wallet is: `, wallet);
+    // // let senderAddress = wallet.address;
+    // let senderAddress = wallet.privateKey;
 
+    let senderAddress = ethjsAccountAddress;
 
     // let senderAddress = res[2];
 
