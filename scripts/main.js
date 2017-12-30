@@ -3,6 +3,10 @@ const Web3 = require('web3');
 const net = require('net');
 const solc = require('solc');
 const fs = require('fs');
+// https://github.com/ethers-io/ethers.js/
+// https://github.com/ethers-io/ethers.js/blob/master/examples/wallet/index.html
+// npm install --save-dev ethers
+const ethers = require('ethers');
 
 /**
  * Deploy Solidity contract to Private Network using Web3.js API 1.0.0-beta.xx
@@ -71,7 +75,20 @@ Promise
   ])
   .then(( res ) => {
     console.log(`Promise.all resolved with: `, res);
-    let senderAddress = res[2];
+
+
+    // TEMPORARY FIX ATTEMPT: Due to error `authentication needed: password or unlock` when using 
+    // web3.eth.personal to generate a senderAddress, we will use the NPM 'ethers'
+    // package instead until Web3.js 1.0.0 Beta-27 adds `unlockAccount` function
+    let PRIVATE_KEY = '0x3141592653589793238462643383279502884197169399375105820974944592';
+    let wallet = new ethers.Wallet(PRIVATE_KEY);
+    console.log(`Wallet is: `, wallet);
+    // let senderAddress = wallet.address;
+    let senderAddress = wallet.privateKey;
+
+
+    // let senderAddress = res[2];
+
     console.log(`Creating contract instance defined in JSON interface object`);
     // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html
     let FSTContract = new web3.eth.Contract(JSON.parse(abi));
