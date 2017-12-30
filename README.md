@@ -216,7 +216,28 @@ npm install
 ```
 node scripts/main.js
 ```
+
   * IMPORTANT NOTE: Errors with `authentication needed: password or unlock` since Web3.js 1.0.0-beta has not finished implementing Unlock - http://web3js.readthedocs.io/en/1.0/web3-eth-personal.html?highlight=unlock
+
+  * Deplot New Contract using Web3.py instead of MIST
+
+    * References:
+      * https://github.com/pyenv/pyenv
+      * https://pypi.python.org/pypi/ethereum/2.1.5
+      * https://pypi.python.org/pypi/web3/4.0.0b5
+      * https://pypi.python.org/pypi/py-solc/2.1.0
+
+```
+pyenv install 3.6.4rc1
+pyenv versions
+pyenv global 3.6.4rc1
+python -m pip install py-solc==2.1.0
+python -m solc.install v0.4.18
+python -m pip install web3==4.0.0b5 
+python -m pip install ethereum==2.1.5
+
+python scripts/main.py
+```
 
 * References:
   * Udemy Ethereum Masterclass - https://www.udemy.com/ethereum-masterclass
