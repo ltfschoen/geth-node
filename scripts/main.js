@@ -158,7 +158,10 @@ Promise
       .then((newContractInstance) => {
         console.log(`Contract instance with address: `, newContractInstance.options.address);
 
-        console.log(`Current Provider path: `, web3.currentProvider.path);
+        // Regain access to IPC Provider - https://github.com/ethereum/web3.js/issues/1266#issuecomment-354591715
+        newContractInstance.setProvider(web3.currentProvider, net);
+
+        console.log(`newContractInstance Current Provider path: `, newContractInstance.currentProvider.path);
 
         web3.eth.getBlockNumber()
           .then((createdAtBlock) => {
@@ -218,7 +221,7 @@ Promise
           },
           (error, allEvents) => {
             if (!error) {
-              console.log(`All events received event: `, event);
+              console.log(`All events received event: `, allEvents);
             } else {
               console.log(`Error - All events: ${error}`);
             }
@@ -230,8 +233,8 @@ Promise
             fromBlock: 0,
             toBlock: 'latest'
           })
-          .then((events) => {
-            console.log(`Get past events received event: `, events);
+          .then((pastEvents) => {
+            console.log(`Get past events received event: `, pastEvents);
           }).catch((error) => {
             console.log(`Error - Get past events: ${error}`);
           });
@@ -247,7 +250,7 @@ Promise
           },
           (error, createdEvent) => {
             if (!error) {
-              console.log(`Subscription to Created event received event: `, event);
+              console.log(`Subscription to Created event received event: `, createdEvent);
             } else {
               console.log(`Error with Created event: ${error}`);
             }
@@ -257,9 +260,9 @@ Promise
           // .on('data', (event) => {
           //   console.log(`Subscription to Created event received event: `, event); // Same results as optional callback above
           // })
-          .on('changed', (event) => {
+          .on('changed', (changedEvent) => {
             // Remove event from local database
-            console.log(`Subscription to Created event received 'changed' event: `, event);
+            console.log(`Subscription to Created event received 'changed' event: `, changedEvent);
           })
           .on('error', (error) => { 
             console.error(`Error listening to Created event: ${error}`); 
@@ -268,15 +271,15 @@ Promise
         newContractInstance.events.Approval({
             fromBlock: 0
           },
-          (error, createdEvent) => {
+          (error, approvalOfEvent) => {
             if (!error) {
-              console.log(`Subscription to Approval event received event: `, event);
+              console.log(`Subscription to Approval event received event: `, approvalOfEvent);
             } else {
               console.log(`Error with Approval event: ${error}`);
             }
           })
-          .on('changed', (event) => {
-            console.log(`Subscription to Approval event received 'changed' event: `, event);
+          .on('changed', (approvalChangedEvent) => {
+            console.log(`Subscription to Approval event received 'changed' event: `, approvalChangedEvent);
           })
           .on('error', (error) => { 
             console.error(`Error listening to Approval event: ${error}`); 
@@ -284,15 +287,15 @@ Promise
 
         // Subscriptions - http://web3js.readthedocs.io/en/1.0/web3-eth-subscribe.html#
         let subscriptionToPendingTransactions = web3.eth.subscribe('pendingTransactions', 
-          (error, transaction) => {
+          (error, pendingTransaction) => {
             if (!error) {
-              console.log(`Subscription - Pending Transaction: `, transaction);
+              console.log(`Subscription - Pending Transaction: `, pendingTransaction);
             } else {
               console.log(`Error - Subscription - Pending Transaction: ${error}`);
             }
           })
-          .on('data', function(transaction) {
-            console.log(`Subscription - Pending Transaction Data: `, transaction);
+          .on('data', function(pendingTransaction) {
+            console.log(`Subscription - Pending Transaction Data: `, pendingTransaction);
           });
 
         let subscriptionToLogs = web3.eth.subscribe('logs', {
@@ -306,14 +309,14 @@ Promise
               console.log(`Error - Subscription - Log:: ${error}`);
             }
           })
-          .on("data", function(log) {
+          .on('data', function(log) {
             console.log(`Subscription - Log Data: `, log);
           })
-          .on("changed", function(log) {
+          .on('changed', function(log) {
             console.log(`Subscription - Log Changed: `, log);
           });
 
-        return Promise.resolve("done");
+        return Promise.resolve('done');
         // process.exit();
       });
   })
