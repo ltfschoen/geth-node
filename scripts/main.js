@@ -16,6 +16,12 @@ let web3 = new Web3();
 web3.setProvider(GETH_IPC_PATH, net);
 console.log(`Web3.js version: ${web3.version}`);
 console.log(`OS Platform: ${process.platform}`);
+console.log(`Current Provider path: `, web3.currentProvider.path);
+
+web3.eth.isMining().then((isMining) => { console.log(`Geth is ${isMining ? '' : 'not' } mining`); });
+web3.eth.getAccounts().then((accounts) => { 
+  console.log(`Accounts in Private Network: ${accounts.length}`); 
+});
 
 let source = fs.readFileSync('./contracts/FixedSupplyToken.sol', 'utf8');
 let compiledContract = solc.compile(source, 1);
@@ -56,22 +62,47 @@ Promise
     web3.eth.personal.newAccount(GENERIC_PASSWORD_TO_ENCRYPT)
       .then((newAccountAddress) => {
         console.log(`Created New Account with address: ${newAccountAddress}`);
+        // Error if try to deploy using this address prior
+        // to mining Ether for it: `insufficient funds for gas * price + value`
         web3.eth.defaultAccount = newAccountAddress;
-        let senderAddress = newAccountAddress;
-        console.log('Default Sender address set to: ', senderAddress);
+        console.log('New Default address set to: ', newAccountAddress);
         // Destructuring parameters
         // Try to avoid error: UnhandledPromiseRejectionWarning: Unhandled promise rejection
-        
-        // Try to Unlock the account for x seconds to overcome error when deploying:
-        // `authentication needed: password or unlock`
-        web3.eth.personal.unlockAccount(newAccountAddress, GENERIC_PASSWORD_TO_ENCRYPT, 15000);
 
-        return Promise.resolve(senderAddress);
+        return Promise.resolve(newAccountAddress);
+      }),
+    // Coinbase Address may be created prior in MIST with GENERIC_PASSWORD_TO_ENCRYPT
+    // https://web3js.readthedocs.io/en/1.0/web3-eth-personal.html
+    // http://web3js.readthedocs.io/en/1.0/web3-eth.html#getaccounts
+    web3.eth.getCoinbase()
+      .then((coinbaseAddress) => { 
+        console.log(`Coinbase Address: `, coinbaseAddress);
+        return Promise.resolve(coinbaseAddress)
       })
   ])
   .then(( res ) => {
     console.log(`Promise.all resolved with: `, res);
-    let senderAddress = res[2];
+    let newAccountAddress = res[2];
+    let coinbaseAddress = res[3];
+
+    // Unlock the account for x seconds to overcome error when deploying:
+    // `authentication needed: password or unlock`
+    const isUnlockedNewAccountAddress = web3.eth.personal.unlockAccount(newAccountAddress, GENERIC_PASSWORD_TO_ENCRYPT, 15000)
+
+    const isUnlockedCoinbaseAddress = web3.eth.personal.unlockAccount(coinbaseAddress, GENERIC_PASSWORD_TO_ENCRYPT, 15000)
+
+    web3.eth.getBalance(coinbaseAddress)
+      .then((coinbaseAddressBalance) => {
+        console.log(`Coinbase Address Balance: `, coinbaseAddressBalance);
+      })
+    
+    let senderAddress = coinbaseAddress;
+
+    return Promise.all([senderAddress, isUnlockedNewAccountAddress, isUnlockedCoinbaseAddress]);
+  })
+  .then(( res ) => {
+    console.log(`Promise.all resolved with: `, res);
+    let senderAddress = res[0];
     console.log(`Creating contract instance defined in JSON interface object`);
     // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html
     let FSTContract = new web3.eth.Contract(JSON.parse(abi));
@@ -106,18 +137,20 @@ Promise
         gas: 1500000,
         gasPrice: '30000000000000'
       }, (error, transactionHash) => { 
-        console.log(`Error sending transaction: `, error, transactionHash); 
+        if (error) {
+          console.log(`Error sending transaction: `, error); 
+        }
       })
       // PromiEvents to watch for events
       .on('error', (error) => { 
         console.log(`Error deploying contract ${error}`); 
       })
       .on('transactionHash', (transactionHash) => {
-        console.log(`Transaction hash: ${transactionHash}`); 
+        console.log(`Successfully submitted contract creation. Transaction hash: ${transactionHash}`); 
       })
       .on('receipt', (receipt) => {
         console.log(`Receipt after mining with contract address: ${receipt.contractAddress}`); 
-        console.log(`Receipt after mining with events: ${receipt.events}`); 
+        console.log(`Receipt after mining with events: ${JSON.stringify(receipt.events, null, 2)}`); 
       })
       .on('confirmation', (confirmationNumber, receipt) => { 
         console.log(`Confirmation no. and receipt: `, confirmationNumber, receipt); 
@@ -125,18 +158,27 @@ Promise
       .then((newContractInstance) => {
         console.log(`Contract instance with address: `, newContractInstance.options.address);
 
-        let createdAtBlock = web3.eth.blockNumber;
-        console.log(`Contract instance created at block number: ${createdAtBlock}`); 
+        console.log(`Current Provider path: `, web3.currentProvider.path);
+
+        web3.eth.getBlockNumber()
+          .then((createdAtBlock) => {
+            console.log(`Contract instance created at block number: ${createdAtBlock}`); 
+          });
 
         // TODO - Batch request - http://web3js.readthedocs.io/en/1.0/web3-eth-personal.html?highlight=unlock#batchrequest
 
         // Call a `constant` method 
         // Reference: http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#methods-mymethod-call
         newContractInstance.methods.totalSupply()
-          .call()
+          .call({
+            from: senderAddress
+          })
           .then((totalSupplyOfTokens) => { 
             console.log(`Total supply of contract tokens: ${totalSupplyOfTokens}`); 
-          });
+          })
+          .catch((error) => {
+            console.log(`Error with Total supply of contract: ${error}`);
+          })
 
         newContractInstance.methods.balanceOf(senderAddress)
           .call({
@@ -144,7 +186,10 @@ Promise
           })
           .then((balanceOfAddress) => {
             console.log(`Balance of sender address: ${balanceOfAddress}`);
-          });
+          })
+          .catch((error) => {
+            console.log(`Error with Balance of sender address: ${error}`);
+          })
 
         // Event Listener
         // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#events
@@ -155,62 +200,125 @@ Promise
         // Subscribe and fire upon single event. Unsubscribe after first event or error.
         // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#once
         newContractInstance.once('Created', {
-          fromBlock: 0
-        }, (error, event) => { 
-          console.log(`Once event received event: `, event); 
-        });
+            fromBlock: 0
+          },
+          (error, createdEvent) => {
+            if (!error) {
+              console.log(`Once event received event: `, createdEvent); 
+            } else {
+              console.log(`Error - Once event: ${error}`);
+            }
+          });
 
         // Receives all events from this smart contract. 
         // Optionally the filter property can filter those events
         // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#events-allevents
         newContractInstance.events.allEvents({
-          fromBlock: 0
-        }, (error, event) => { 
-          console.log(`All events received event: `, event);
-        });
+            fromBlock: 0
+          },
+          (error, allEvents) => {
+            if (!error) {
+              console.log(`All events received event: `, event);
+            } else {
+              console.log(`Error - All events: ${error}`);
+            }
+          });
 
         // Gets past events for contract returned as an array of past event Objects
         // matching the given event name and filter
         newContractInstance.getPastEvents('Created', {
-          fromBlock: 0,
-          toBlock: 'latest'
-        }, (error, events) => { 
-          console.log(`Get past events received event: `, event);
-        })
-        // .then(function(events){
-        //   console.log(`Get past events received event: `, event); // Same results as optional callback above
-        // });
+            fromBlock: 0,
+            toBlock: 'latest'
+          })
+          .then((events) => {
+            console.log(`Get past events received event: `, events);
+          }).catch((error) => {
+            console.log(`Error - Get past events: ${error}`);
+          });
 
-        // Subscribe to an event
+        // Subscriptions to an event
         // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#contract-events
         newContractInstance.events.Created({
-          // filter: {
-          //   myIndexedParam: [20,23], // array means OR (i.e. 20 or 23)
-          //   myOtherIndexedParam: '0x123456789...'
-          // },
-          fromBlock: 0
-        }, (error, event) => { 
-          console.log(`Subscription to Created event received event: `, event);
-        })
-        // Event Emitter events
-        // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#contract-events-return
-        // .on('data', (event) => {
-        //   console.log(`Subscription to Created event received event: `, event); // Same results as optional callback above
-        // })
-        .on('changed', (event) => {
-          // Remove event from local database
-          console.log(`Subscription to Created event received 'changed' event: `, event);
-        })
-        .on('error', (err) => { 
-          console.error(`Error listening to Created event`, err); 
-        });
+            // filter: {
+            //   myIndexedParam: [20,23], // array means OR (i.e. 20 or 23)
+            //   myOtherIndexedParam: '0x123456789...'
+            // },
+            fromBlock: 0
+          },
+          (error, createdEvent) => {
+            if (!error) {
+              console.log(`Subscription to Created event received event: `, event);
+            } else {
+              console.log(`Error with Created event: ${error}`);
+            }
+          })
+          // Event Emitter events
+          // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html#contract-events-return
+          // .on('data', (event) => {
+          //   console.log(`Subscription to Created event received event: `, event); // Same results as optional callback above
+          // })
+          .on('changed', (event) => {
+            // Remove event from local database
+            console.log(`Subscription to Created event received 'changed' event: `, event);
+          })
+          .on('error', (error) => { 
+            console.error(`Error listening to Created event: ${error}`); 
+          });
+
+        newContractInstance.events.Approval({
+            fromBlock: 0
+          },
+          (error, createdEvent) => {
+            if (!error) {
+              console.log(`Subscription to Approval event received event: `, event);
+            } else {
+              console.log(`Error with Approval event: ${error}`);
+            }
+          })
+          .on('changed', (event) => {
+            console.log(`Subscription to Approval event received 'changed' event: `, event);
+          })
+          .on('error', (error) => { 
+            console.error(`Error listening to Approval event: ${error}`); 
+          });
+
+        // Subscriptions - http://web3js.readthedocs.io/en/1.0/web3-eth-subscribe.html#
+        let subscriptionToPendingTransactions = web3.eth.subscribe('pendingTransactions', 
+          (error, transaction) => {
+            if (!error) {
+              console.log(`Subscription - Pending Transaction: `, transaction);
+            } else {
+              console.log(`Error - Subscription - Pending Transaction: ${error}`);
+            }
+          })
+          .on('data', function(transaction) {
+            console.log(`Subscription - Pending Transaction Data: `, transaction);
+          });
+
+        let subscriptionToLogs = web3.eth.subscribe('logs', {
+            address: senderAddress,
+            topics: [null]
+          },
+          (error, log) => {
+            if (!error) {
+              console.log(`Subscription - Log: `, log); 
+            } else {
+              console.log(`Error - Subscription - Log:: ${error}`);
+            }
+          })
+          .on("data", function(log) {
+            console.log(`Subscription - Log Data: `, log);
+          })
+          .on("changed", function(log) {
+            console.log(`Subscription - Log Changed: `, log);
+          });
 
         return Promise.resolve("done");
         // process.exit();
       });
   })
-  .catch((err) => {
+  .catch((error) => {
     // log that I have an error, return the entire array;
-    console.log(`Promise failed to resolve: `, err.message);
+    console.log(`Promise failed to resolve: `, error.message);
     return Promise.reject('Promise failed to resolve');
   })

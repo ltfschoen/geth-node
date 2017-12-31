@@ -211,15 +211,135 @@ npm install --save-dev \
 npm install
 ```
 
-  * Deploy New Contract using Web3.js instead of via MIST
+  * Terminal Tab #2 - Deploy New Contract using Web3.js instead of via MIST
 
 ```
 node scripts/main.js
 ```
 
-  * IMPORTANT NOTE: Errors with `authentication needed: password or unlock` since Web3.js 1.0.0-beta has not finished implementing Unlock - http://web3js.readthedocs.io/en/1.0/web3-eth-personal.html?highlight=unlock
+    * IMPORTANT NOTE: Errors with `authentication needed: password or unlock` were caused because the `unlockAccount` is a Promise that must be resolved before contract deployment.
 
-  * Deplot New Contract using Web3.py instead of MIST
+    * Terminal Tab #2 - Successfuly deployment should display:
+
+      * EXAMPLE OUTPUT
+        * `transactionHash` event (or `error` event)
+
+```
+Web3.js version: 1.0.0-beta.27
+OS Platform: darwin
+Geth is not mining
+Accounts in Private Network: 57
+Coinbase Address:  0x487f2778ec7d0747d6e26af80148ec471a08b339
+Geth Node Listening: true
+Contract gas estimate: 518329
+Created New Account with address: 0x8d59cA1Edfb4b7644A875325A003E4CB0Ae06b9B
+New Default address set to:  0x8d59cA1Edfb4b7644A875325A003E4CB0Ae06b9B
+Promise.all resolved with:  [ undefined,
+  undefined,
+  '0x8d59cA1Edfb4b7644A875325A003E4CB0Ae06b9B',
+  '0x487f2778ec7d0747d6e26af80148ec471a08b339' ]
+Coinbase Address Balance:  4985000000000000000000
+Promise.all resolved with:  [ '0x487f2778ec7d0747d6e26af80148ec471a08b339', true, true ]
+Creating contract instance defined in JSON interface object
+Promise resolved with FSTContract, and senderAddress:  0x487f2778ec7d0747d6e26af80148ec471a08b339
+Successfully submitted contract creation. Transaction hash: 0xdf1501e72dc8e11a6abee5fd215850804cfbf9a512719dccf3c9017b32d166a2
+```
+
+    * Terminal Tab #1 - Check Geth Console and it should display: 
+```
+...
+INFO [12-31|12:47:33] Submitted contract creation fullhash=0xABC contract=0xDEF...
+```
+
+    * Terminal Tab #3 - Attached to the Geth Node JavaScript console. Verify that the Transaction Receipt does not exist for the Transaction Hash yet until mined (and returns `null`), then proceed to Mine some blocks before running `miner.stop()` to publish the contract on the blockchain: 
+
+```
+geth attach "/Users/Ls/code/blockchain/geth-node/chaindata/geth.ipc"
+
+web3.eth.getTransactionReceipt('0xdf1501e72dc8e11a6abee5fd215850804cfbf9a512719dccf3c9017b32d166a2')
+
+miner.start(1);
+
+miner.stop()
+```
+
+    * Terminal Tab #2 - Watch the Bash terminal for the PromiEvents that we setup an event listener for to trigger when the contract is mined and deployed in a block, when a receipt is provided, and for each confirmation (i.e. ~20 confirmations).
+    We also subscribe to different events that we added to the Solidity smart contract (i.e. `Created`)
+
+      * EXAMPLE OUTPUT
+        * `confirmation` events
+        * `receipt` events
+        * Deployment of contract Promise resolved success
+```
+Confirmation no. and receipt:  0 { blockHash: '0x388ff4acef35c2cdf18fba6551f359f4c25c3f7aa6ef2c4d87069683678de6b5',
+  blockNumber: 126,
+  contractAddress: '0xe1EE909fAE2341B12b3CAe9bE90ae47e9D9e1568',
+  cumulativeGasUsed: 518521,
+  from: '0x487f2778ec7d0747d6e26af80148ec471a08b339',
+  gasUsed: 518521,
+  logsBloom: '0x00000000000000000000000000008000000000000000000000000000000000021080000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000',
+  root: '0xd70f83e1af93d9154a7d9cda888e9b11e11cc9942df5985a62dd25776ae2bee9',
+  to: null,
+  transactionHash: '0xdf1501e72dc8e11a6abee5fd215850804cfbf9a512719dccf3c9017b32d166a2',
+  transactionIndex: 0,
+  events: 
+   { Created: 
+      { address: '0xe1EE909fAE2341B12b3CAe9bE90ae47e9D9e1568',
+        blockNumber: 126,
+        transactionHash: '0xdf1501e72dc8e11a6abee5fd215850804cfbf9a512719dccf3c9017b32d166a2',
+        transactionIndex: 0,
+        blockHash: '0x388ff4acef35c2cdf18fba6551f359f4c25c3f7aa6ef2c4d87069683678de6b5',
+        logIndex: 0,
+        removed: false,
+        id: 'log_cc8b5cba',
+        returnValues: [Object],
+        event: 'Created',
+        signature: '0x102d25c49d33fcdb8976a3f2744e0785c98d9e43b88364859e6aec4ae82eff5c',
+        raw: [Object] } } }
+Receipt after mining with contract address: 0xe1EE909fAE2341B12b3CAe9bE90ae47e9D9e1568
+Receipt after mining with events: [object Object]
+Contract instance with address:  0xe1EE909fAE2341B12b3CAe9bE90ae47e9D9e1568
+Contract instance created at block number: 126
+Once event received event:  null
+All events received event:  null
+
+...
+
+Confirmation no. and receipt:  10 { blockHash: '0x388ff4acef35c2cdf18fba6551f359f4c25c3f7aa6ef2c4d87069683678de6b5',
+  blockNumber: 126,
+  contractAddress: '0xe1EE909fAE2341B12b3CAe9bE90ae47e9D9e1568',
+  cumulativeGasUsed: 518521,
+  from: '0x487f2778ec7d0747d6e26af80148ec471a08b339',
+  gasUsed: 518521,
+  logsBloom: '0x00000000000000000000000000008000000000000000000000000000000000021080000000000000000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000',
+  root: '0xd70f83e1af93d9154a7d9cda888e9b11e11cc9942df5985a62dd25776ae2bee9',
+  to: null,
+  transactionHash: '0xdf1501e72dc8e11a6abee5fd215850804cfbf9a512719dccf3c9017b32d166a2',
+  transactionIndex: 0,
+  events: 
+   { Created: 
+      { address: '0xe1EE909fAE2341B12b3CAe9bE90ae47e9D9e1568',
+        blockNumber: 126,
+        transactionHash: '0xdf1501e72dc8e11a6abee5fd215850804cfbf9a512719dccf3c9017b32d166a2',
+        transactionIndex: 0,
+        blockHash: '0x388ff4acef35c2cdf18fba6551f359f4c25c3f7aa6ef2c4d87069683678de6b5',
+        logIndex: 0,
+        removed: false,
+        id: 'log_cc8b5cba',
+        returnValues: [Object],
+        event: 'Created',
+        signature: '0x102d25c49d33fcdb8976a3f2744e0785c98d9e43b88364859e6aec4ae82eff5c',
+        raw: [Object] } } }
+```
+
+    * Check to see if a Transaction Receipt now exists for the Transaction Hash:
+
+```
+web3.eth.getTransactionReceipt('0xdf1501e72dc8e11a6abee5fd215850804cfbf9a512719dccf3c9017b32d166a2')
+```
+
+
+  * Deploy New Contract using Web3.py instead of MIST
 
     * References:
       * https://github.com/pyenv/pyenv
