@@ -98,22 +98,24 @@ Promise
     
     let senderAddress = coinbaseAddress;
 
-    return Promise.all([senderAddress, isUnlockedNewAccountAddress, isUnlockedCoinbaseAddress]);
+    return Promise.all([senderAddress, isUnlockedNewAccountAddress, isUnlockedCoinbaseAddress, newAccountAddress]);
   })
   .then(( res ) => {
     console.log(`Promise.all resolved with: `, res);
     let senderAddress = res[0];
     console.log(`Creating contract instance defined in JSON interface object`);
+    let newAccountAddress = res[3];
     // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html
     let FSTContract = new web3.eth.Contract(JSON.parse(abi));
     // console.log(`Contract options: `, JSON.stringify(FSTContract.options, null, 2));
     FSTContract.options.from = senderAddress;
     FSTContract.options.gasPrice = '30000000000000'; // Default gas price in wei
     FSTContract.options.gas = 5000000; // Fallback
-    return Promise.resolve([FSTContract, senderAddress]);
+    return Promise.resolve([FSTContract, senderAddress, newAccountAddress]);
   })
-  .then(( [FSTContract, senderAddress] ) => {
+  .then(( [FSTContract, senderAddress, newAccountAddress] ) => {
     console.log(`Promise resolved with FSTContract, and senderAddress: `, senderAddress);
+    console.log(`newAccountAddress: `, newAccountAddress);
     let uniqueContractId = '0x7000000000000000000000000000000000000000000000000000000000000000';
     // Deploy contract to blockchain. Address is published when mined. 
     // References: https://gist.github.com/frozeman/655a9325a93ac198416e
@@ -153,7 +155,7 @@ Promise
         console.log(`Receipt after mining with events: ${JSON.stringify(receipt.events, null, 2)}`); 
       })
       .on('confirmation', (confirmationNumber, receipt) => { 
-        console.log(`Confirmation no. and receipt: `, confirmationNumber, receipt); 
+        console.log(`Confirmation no. ${confirmationNumber} and receipt for contract deployment: `, receipt); 
       })
       .then((newContractInstance) => {
         console.log(`Contract instance with address: `, newContractInstance.options.address);
@@ -285,6 +287,23 @@ Promise
             console.error(`Error listening to Approval event: ${error}`); 
           });
 
+        newContractInstance.events.Transfer({
+            fromBlock: 0
+          },
+          (error, transferEvent) => {
+            if (!error) {
+              console.log(`Subscription to Transfer event received event: `, transferEvent);
+            } else {
+              console.log(`Error with Transfer event: ${error}`);
+            }
+          })
+          .on('changed', (transferChangedEvent) => {
+            console.log(`Subscription to Transfer event received 'changed' event: `, transferChangedEvent);
+          })
+          .on('error', (error) => { 
+            console.error(`Error listening to Transfer event: ${error}`); 
+          });
+
         // Subscriptions - http://web3js.readthedocs.io/en/1.0/web3-eth-subscribe.html#
         let subscriptionToPendingTransactions = web3.eth.subscribe('pendingTransactions', 
           (error, pendingTransaction) => {
@@ -315,6 +334,73 @@ Promise
           .on('changed', function(log) {
             console.log(`Subscription - Log Changed: `, log);
           });
+
+        // Check Balances before initial transfer
+        web3.eth.getBalance(senderAddress)
+          .then((senderAddressBalance) => {
+            console.log(`Initial Sender Address Balance (prior to any Transfer): `, senderAddressBalance);
+          })
+
+        web3.eth.getBalance(newAccountAddress)
+          .then((newAccountAddressBalance) => {
+            console.log(`Initial New Account Address Balance (prior to any Transfer): `, newAccountAddressBalance);
+          })
+
+        // Estimate the Gas required for Transaction to trigger the 'Approve' event of the contract
+        // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html?highlight=methods#methods-mymethod-estimategas
+        newContractInstance
+          .methods.approve(newAccountAddress, 1000)
+          .estimateGas({ 
+            from: senderAddress,
+            gas: 5000000
+          })
+          .then(function(gasAmount){
+            console.log(`Estimated Gas amount required to approve account ${newAccountAddress}: ${gasAmount}`); 
+          })
+          .catch(function(error){
+            console.log(`Error estimating gas to approve account ${newAccountAddress}: ${error}`); 
+          });
+
+        // Create a Transaction to trigger the 'Approve' event of the contract
+        // using the Event Emitter approach
+        // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html?highlight=methods#methods-mymethod-send
+        newContractInstance
+          .methods
+          .approve(newAccountAddress, 1000)
+          .send({
+            from: senderAddress
+          })
+          // PromiEvents to watch for events
+          .on('error', (error) => { 
+            console.log(`Error approving account ${newAccountAddress}: ${error}`); 
+          })
+          .on('transactionHash', (transactionHash) => {
+            console.log(`Successfully approved account ${newAccountAddress}. Transaction hash: ${transactionHash}`); 
+          })
+          .on('receipt', function(receipt){
+            console.log(`Receipt after approving account ${newAccountAddress}: `, receipt); 
+          })
+          .on('confirmation', function(confirmationNumber, receipt){
+            console.log(`Confirmation no. ${confirmationNumber} and receipt for approved account ${newAccountAddress}: `, receipt);
+          
+            if (confirmationNumber >= 24) {
+
+              // Create a Call to the function `allowance` to return the remaining allowance of an approved spender
+              // that has been granted from an address
+              // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html?highlight=methods#methods-mymethod-call
+              newContractInstance
+                .methods
+                .allowance(senderAddress, newAccountAddress).call({
+                  from: senderAddress
+                })
+                .then(function(remainingAllowance){
+                  console.log(`Allowance remaining for address ${newAccountAddress}: ${remainingAllowance}`);
+                })
+                .catch(function(error){
+                  console.log(`Error obtaining allowance remaining for address ${newAccountAddress}: ${error}`); 
+                });
+            }
+          })
 
         return Promise.resolve('done');
         // process.exit();
