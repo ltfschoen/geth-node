@@ -276,6 +276,79 @@ Promise
           (error, approvalOfEvent) => {
             if (!error) {
               console.log(`Subscription to Approval event received event: `, approvalOfEvent);
+
+              web3.eth.getBalance(senderAddress)
+                .then((senderAddressBalance) => {
+                  console.log(`Sender Address Balance (prior to Transfer): `, senderAddressBalance);
+                })
+
+              web3.eth.getBalance(newAccountAddress)
+                .then((newAccountAddressBalance) => {
+                  console.log(`New Account Address Balance (prior to Transfer): `, newAccountAddressBalance);
+                })
+
+              // Estimate the Gas required for Transaction to trigger the 'Transfer' event of the contract
+              // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html?highlight=methods#methods-mymethod-estimategas
+              newContractInstance
+                .methods
+                .transferFrom(senderAddress, newAccountAddress, 200)
+                .estimateGas({ 
+                  from: newAccountAddress,
+                  gas: 5000000,
+                  gasPrice: '30000000000000'
+                })
+                .then(function(gasAmount){
+                  console.log(`Estimated Gas amount required to transfer from account ${senderAddress}: ${gasAmount}`); 
+                })
+                .catch(function(error){
+                  console.log(`Error estimating gas to transfer from account ${senderAddress}: ${error}`); 
+                });
+
+              // TODO - Refactor since repeating calls to contract methods such as `allowance`
+
+              // Create a Transaction to trigger the 'Transfer' event of the contract
+              // using the Event Emitter approach
+              // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html?highlight=methods#methods-mymethod-send
+              newContractInstance
+                .methods
+                .transferFrom(senderAddress, newAccountAddress, 200)
+                .send({
+                  from: newAccountAddress, // Since we have called the contract `approve` function to grant them authority
+                  gas: 1500000,
+                  gasPrice: '30000000000000'
+                })
+                // PromiEvents to watch for events
+                .on('error', (error) => { 
+                  console.log(`Error transferring from account ${senderAddress} to ${newAccountAddress}: ${error}`); 
+                })
+                .on('transactionHash', (transactionHash) => {
+                  console.log(`Successfully transferred from account ${senderAddress} to ${newAccountAddress}. Transaction hash: ${transactionHash}`); 
+                })
+                .on('receipt', function(receipt){
+                  console.log(`Receipt after transferring from account ${senderAddress} to ${newAccountAddress}: `, receipt); 
+                })
+                .on('confirmation', function(confirmationNumber, receipt){
+                  console.log(`Confirmation no. ${confirmationNumber} and receipt for transferring from account ${senderAddress} to ${newAccountAddress}: `, receipt);
+                
+                  if (confirmationNumber >= 24) {
+
+                    // Create a Call to the function `allowance` to return the remaining allowance of an approved spender
+                    // that has been granted from an address
+                    // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html?highlight=methods#methods-mymethod-call
+                    newContractInstance
+                      .methods
+                      .allowance(senderAddress, newAccountAddress).call({
+                        from: senderAddress
+                      })
+                      .then(function(remainingAllowance){
+                        console.log(`Allowance remaining for address ${newAccountAddress}: ${remainingAllowance}`); 
+                      })
+                      .catch(function(error){
+                        console.log(`Error obtaining allowance remaining for address ${newAccountAddress}: ${error}`); 
+                      });
+                  }
+                })
+
             } else {
               console.log(`Error with Approval event: ${error}`);
             }
@@ -344,6 +417,62 @@ Promise
         web3.eth.getBalance(newAccountAddress)
           .then((newAccountAddressBalance) => {
             console.log(`Initial New Account Address Balance (prior to any Transfer): `, newAccountAddressBalance);
+          })
+
+        // Estimate the Gas required for Transaction to trigger the 'Transfer' event of the contract
+        // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html?highlight=methods#methods-mymethod-estimategas
+        newContractInstance
+          .methods
+          .transfer(newAccountAddress, 150)
+          .estimateGas({ 
+            from: senderAddress,
+            gas: 5000000,
+            gasPrice: '30000000000000'
+          })
+          .then(function(gasAmount){
+            console.log(`Estimated Gas amount required to transfer from account ${senderAddress}: ${gasAmount}`); 
+          })
+          .catch(function(error){
+            console.log(`Error estimating gas to transfer from account ${senderAddress}: ${error}`); 
+          });
+
+        // Create a Transaction to trigger the 'Transfer' event of the contract
+        // using the Event Emitter approach
+        // http://web3js.readthedocs.io/en/1.0/web3-eth-contract.html?highlight=methods#methods-mymethod-send
+        newContractInstance
+          .methods
+          .transfer(newAccountAddress, 150)
+          .send({
+            from: senderAddress,
+            gas: 1500000,
+            gasPrice: '30000000000000'
+          })
+          // PromiEvents to watch for events
+          .on('error', (error) => { 
+            console.log(`Error transferring from account ${senderAddress} to ${newAccountAddress}: ${error}`); 
+          })
+          .on('transactionHash', (transactionHash) => {
+            console.log(`Successfully transferred from account ${senderAddress} to ${newAccountAddress}. Transaction hash: ${transactionHash}`); 
+          })
+          .on('receipt', function(receipt){
+            console.log(`Receipt after transferring from account ${senderAddress} to ${newAccountAddress}: `, receipt); 
+          })
+          .on('confirmation', function(confirmationNumber, receipt){
+            console.log(`Confirmation no. ${confirmationNumber} and receipt for transferring from account ${senderAddress} to ${newAccountAddress}: `, receipt);
+          
+            if (confirmationNumber >= 24) {
+
+              // Check Balances before after initial transfer that tops up newAccountAddressBalance from coinbase
+              web3.eth.getBalance(senderAddress)
+                .then((senderAddressBalance) => {
+                  console.log(`Initial Sender Address Balance (after to Transfer): `, senderAddressBalance);
+                })
+
+              web3.eth.getBalance(newAccountAddress)
+                .then((newAccountAddressBalance) => {
+                  console.log(`Initial New Account Address Balance (after to Transfer): `, newAccountAddressBalance);
+                })
+            }
           })
 
         // Estimate the Gas required for Transaction to trigger the 'Approve' event of the contract
