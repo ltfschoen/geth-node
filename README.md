@@ -245,7 +245,8 @@ Promise resolved with FSTContract, and senderAddress:  0x487f2778ec7d0747d6e26af
 Successfully submitted contract creation. Transaction hash: 0xdf1501e72dc8e11a6abee5fd215850804cfbf9a512719dccf3c9017b32d166a2
 ```
 
-    * Terminal Tab #1 - Check Geth Console and it should display: 
+    * Terminal Tab #1 - Check Geth Console and it should display:
+
 ```
 ...
 INFO [12-31|12:47:33] Submitted contract creation fullhash=0xABC contract=0xDEF...
@@ -270,6 +271,7 @@ miner.stop()
         * `confirmation` events
         * `receipt` events
         * Deployment of contract Promise resolved success
+
 ```
 Confirmation no. and receipt:  0 { blockHash: '0x388ff4acef35c2cdf18fba6551f359f4c25c3f7aa6ef2c4d87069683678de6b5',
   blockNumber: 126,
