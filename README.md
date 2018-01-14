@@ -1,4 +1,21 @@
-# Setup
+# Fast Setup (only after previously setting up using the "Slow Setup")
+
+* Change the Shell script to match the directory that you setup in the "Slow Setup" steps.
+
+* Run the Shell script to automatically run a Geth Node in a terminal tab, launches MIST that waits 5 seconds before trying to attach to the Geth Node from a second terminal tab, waits 5 seconds before trying to run a Geth JavaScript Console that attaches to the Geth Node in a third terminal tab, and opens Visual Studio Code from a fourth terminal tab.
+  ```shell
+  bash launch.sh
+  ```
+
+* Click "Launch Application" in MIST 
+
+* Go to "Contracts"
+
+* Click "Deploy Contracts"
+
+* Copy/paste a Solidity Smart Contract into the "SOLIDITY CONTRACT SOURCE CODE" section to check if it compiles
+
+# Slow Setup
 
 * Setup Geth Node (independent of MIST or Parity) as an Ethereum client using Ethereum Protocol that allows for interaction with the Private Network blockchain.
 
